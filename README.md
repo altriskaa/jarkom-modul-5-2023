@@ -68,9 +68,9 @@ up echo nameserver 192.168.122.1 > /etc/resolv.conf
 ```
 auto eth0
 iface eth0 inet dhcp
-address 192.201.8.2
-netmask 255.255.248.0
-gateway 192.201.8.1
+#address 192.201.8.2
+#netmask 255.255.248.0
+#gateway 192.201.8.1
 
 up echo nameserver 192.168.122.1 > /etc/resolv.conf
 ```
@@ -88,9 +88,9 @@ up echo nameserver 192.168.122.1 > /etc/resolv.conf
 ```
 auto eth0
 iface eth0 inet dhcp
-address 192.201.4.3
-netmask 255.255.252.0
-gateway 192.201.4.1
+#address 192.201.4.3
+#netmask 255.255.252.0
+#gateway 192.201.4.1
 
 up echo nameserver 192.168.122.1 > /etc/resolv.conf
 ```
@@ -144,9 +144,9 @@ up echo nameserver 192.168.122.1 > /etc/resolv.conf
 ```
 auto eth0
 iface eth0 inet dhcp
-address 192.201.0.131
-netmask 255.255.255.128
-gateway 192.201.0.129
+#address 192.201.0.131
+#netmask 255.255.255.128
+#gateway 192.201.0.129
 
 up echo nameserver 192.168.122.1 > /etc/resolv.conf
 ```
@@ -207,9 +207,9 @@ up echo nameserver 192.168.122.1 > /etc/resolv.conf
 ```
 auto eth0
 iface eth0 inet dhcp
-address 192.201.2.2
-netmask 255.255.254.0
-gateway 192.201.2.1
+#address 192.201.2.2
+#netmask 255.255.254.0
+#gateway 192.201.2.1
 
 up echo nameserver 192.168.122.1 > /etc/resolv.conf
 ```
@@ -239,12 +239,107 @@ up route add -net 192.201.0.20 netmask 255.255.255.252 gw 192.201.0.13
 up route add -net 192.201.0.16 netmask 255.255.255.252 gw 192.201.0.130
 up route add -net 192.201.0.20 netmask 255.255.255.252 gw 192.201.0.130
 ```
+
+Kemudian, dilakuka kongfigurasi untuk _set-up_ DHCP di beberapa node seperti berikut:
+
+- **Revolte** - dhcpd.conf
+```
+#A1
+subnet 192.201.0.0 netmask 255.255.255.252 {
+}
+
+#A2
+subnet 192.201.8.0 netmask 255.255.248.0 {
+    range 192.201.8.2 192.201.15.254;
+    option routers 192.201.8.1;
+    option broadcast-address 192.201.15.255;
+    default-lease-time 180;
+    max-lease-time 5760;
+}
+
+#A3
+subnet 192.201.4.0 netmask 255.255.252.0 {
+    range 192.201.4.3 192.201.7.254;
+    option routers 192.201.4.1;
+    option broadcast-address 192.201.7.255;
+    default-lease-time 180;
+    max-lease-time 5760;
+}
+
+#A4
+subnet 192.201.0.4 netmask 255.255.255.252 {
+}
+
+#A5
+subnet 192.201.0.8 netmask 255.255.255.252 {
+}
+
+#A6
+subnet 192.201.0.12 netmask 255.255.255.252 {
+}
+
+#A7
+subnet 192.201.2.0 netmask 255.255.254.0 {
+    range 192.201.2.2 192.201.2.254;
+    option routers 192.201.2.1;
+    option broadcast-address 192.201.2.255;
+    default-lease-time 180;
+    max-lease-time 5760;
+}
+
+#A8
+subnet 192.201.0.128 netmask 255.255.255.128 {
+    range 192.201.0.131 192.201.0.254;
+    option routers 192.201.0.129;
+    option broadcast-address 192.201.0.255;
+    default-lease-time 180;
+    max-lease-time 5760;
+}
+
+#A9
+subnet 192.201.0.16 netmask 255.255.255.252 {
+}
+
+#A10
+subnet 192.201.0.20 netmask 255.255.255.252 {
+}
+```
+
+- **DHCP Relay** - isc-dhcp-relay
+```bash
+SERVERS="192.201.0.22"
+
+# On what interfaces should the DHCP relay (dhrelay) serve DHCP requests?
+INTERFACES="eth0 eth1 eth2"
+
+# Additional options that are passed to the DHCP relay daemon?
+OPTIONS=""
+```
+
 ## Soal 1  
 > Agar topologi yang kalian buat dapat mengakses keluar, kalian diminta untuk mengkonfigurasi Aura menggunakan iptables, tetapi tidak ingin menggunakan MASQUERADE.
+Pada `Aura` jalankan
 ```sh
 ETH0_IP=$(ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
 iptables -t nat -A POSTROUTING -o eth0 -j SNAT --to-source $ETH0_IP
 ```
+Berikut adalah penjelasan dari _syntax_ tersebut beserta masing-masing fungsinya:
+
+`ip -4 addr show eth0:` Menampilkan informasi alamat IP untuk antarmuka jaringan eth0.
+
+`grep -oP '(?<=inet\s)\d+(\.\d+){3}'`: Menggunakan grep untuk mengambil alamat IP dari baris yang mengandung "inet" pada output sebelumnya.`
+
+`iptables -t nat -A POSTROUTING`: Menambahkan aturan ke chain POSTROUTING pada tabel nat.
+
+`-o eth0`: Menentukan antarmuka keluar (outgoing) sebagai eth0.
+
+`-j SNAT`: Menyatakan bahwa _rules_ tersebut adalah Source Network Address Translation.
+
+`--to-source $ETH0_IP`: Menentukan alamat IP sumber untuk melakukan SNAT, menggunakan alamat IP yang telah diperoleh sebelumnya dari eth0.
+
+_Output_ dari nomor 1 adalah tiap _route_ dapat melakukan ping keluar (misalnya: google.com) seperti pada gambar berikut:
+
+Lalu untuk testing buka client dan lakukan `ping google.com`
 
 ## Soal 2
 > Kalian diminta untuk melakukan drop semua TCP dan UDP kecuali port 8080 pada TCP.
@@ -255,6 +350,13 @@ iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
 iptables -A INPUT -p tcp -j DROP
 iptables -A INPUT -p udp -j DROP
 ```
+Dari _syntax_ tersebut dapat dilihat bahwa _node_ tersebut hanya menerima koneksi dari port 8080 dengan koneksi TCP. Berikut adalah hasil _testing_ yang sudah dilakukan:
+
+![image](https://github.com/altriskaa/jarkom-modul-5-d20-2023/assets/114663340/24211f64-d95e-4811-9e52-80b82e88e3bc)
+
+Dari gambar tersebut dapat dilihat bahwa koneksi yang menggunakan port 8080 dapat mengirim dan menerima pesa, sedangkan untuk koneksi dengan port 8000 tidak bisa berkomunikasi.
+
+
 
 ## Soal 3
 > Kepala Suku North Area meminta kalian untuk membatasi DHCP dan DNS Server hanya dapat dilakukan ping oleh maksimal 3 device secara bersamaan, selebihnya akan di drop.
@@ -268,6 +370,14 @@ iptables -A INPUT -p icmp -m connlimit --connlimit-above 3 --connlimit-mask 0 -j
 iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 iptables -A INPUT -p icmp -m connlimit --connlimit-above 3 --connlimit-mask 0 -j DROP
 ```
+
+Kemudian dilakukan testing dengan cara melakukan ping menuju node tersebut dengan 4 node. Berikut adalah hasil testing yang telah dilakukan:
+
+![image](https://github.com/altriskaa/jarkom-modul-5-d20-2023/assets/114663340/43aa4fcc-6eed-49c6-a161-0545e5117b33)
+
+Dapat dilihat bahwa node keempat yang melakukan ping akan gagal dan tidak bisa tersambung dengan node tujuan.
+
+
 ## Soal 4
 > Lakukan pembatasan sehingga koneksi SSH pada Web Server hanya dapat dilakukan oleh masyarakat yang berada pada GrobeForest.
 - Sein dan Stark
@@ -275,6 +385,13 @@ iptables -A INPUT -p icmp -m connlimit --connlimit-above 3 --connlimit-mask 0 -j
 iptables -A INPUT -p tcp --dport 22 -s 192.201.4.0/22 -j ACCEPT
 iptables -A INPUT -p tcp --dport 22 -j DROP
 ```
+Dalam syntax tersebut dilakukan pembatasan untuk subnet dari GrobeForest, serta hanya bisa diakses oleh ip 22 atau SSH. Berikut adalah hasil testing untuk nomor 4:
+
+![image](https://github.com/altriskaa/jarkom-modul-5-d20-2023/assets/114663340/2cc90876-7783-46f5-9657-df3ae68f2e7f)
+
+Dapat dilihat bahwa untuk GrobeForest menunjukkan hasil open, sedangkan untuk node lain filtered atau tidak berhasil tersambung.
+
+
 ## Soal 5
 > Selain itu, akses menuju WebServer hanya diperbolehkan saat jam kerja yaitu Senin-Jumat pada pukul 08.00-16.00. 
 - Sein dan Stark  
